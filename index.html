@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D2C Channel &amp; Product Performance</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1c2233;--mute:#6b7389;--line:#e6e9f2;--c1:#6c5ce7;--c2:#00b894;--c3:#fd79a8;--c4:#fdcb6e;--c5:#0984e3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px}
+h1{font-size:22px;margin:0}
+.sub{color:var(--mute);font-size:13px;margin-top:4px}
+select{padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:14px;color:var(--ink)}
+label{font-size:13px;color:var(--mute);margin-right:8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 1px 2px rgba(20,30,60,.04)}
+.kpi .l{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.kpi .v{font-size:28px;font-weight:700;margin-top:6px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.card h2{font-size:15px;margin:0 0 12px}
+.box{position:relative;height:300px}
+.wide{grid-column:1/-1}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>Channel &amp; Product Performance</h1><div class="sub">D2C beauty &amp; wellness · 2024 orders · revenue = qty × MRP × (1 − discount)</div></div>
+    <div><label for="ch">Channel</label><select id="ch"></select></div>
+  </header>
+  <section class="kpis">
+    <div class="card kpi"><div class="l">Total revenue</div><div class="v" id="k1"></div></div>
+    <div class="card kpi"><div class="l">Total orders</div><div class="v" id="k2"></div></div>
+    <div class="card kpi"><div class="l">Avg order value</div><div class="v" id="k3"></div></div>
+    <div class="card kpi"><div class="l">Avg discount</div><div class="v" id="k4"></div></div>
+  </section>
+  <section class="grid">
+    <div class="card"><h2>Revenue by channel</h2><div class="box"><canvas id="c1"></canvas></div></div>
+    <div class="card"><h2>Revenue by category</h2><div class="box"><canvas id="c2"></canvas></div></div>
+    <div class="card"><h2>Top 10 products by revenue</h2><div class="box"><canvas id="c3"></canvas></div></div>
+    <div class="card"><h2>Monthly revenue trend</h2><div class="box"><canvas id="c4"></canvas></div></div>
+  </section>
+</div>
+<script>
+const CSV = `order_id,order_date,category,product_name,channel,quantity,MRP,discount_pct,revenue
+1001,2024-11-23,Haircare,Hair Mask,Website,2.0,1047.0,12.0,1842.72
+1002,2024-10-29,Skincare,Sunscreen SPF50,Amazon,2.0,1442.0,20.0,2307.2
+1003,2024-04-11,Makeup,Lipstick,App,4.0,955.0,5.0,3629.0
+1004,2024-12-23,Haircare,Hair Mask,Website,3.0,1047.0,12.0,2764.08
+1005,2024-07-02,Wellness,Collagen Supplement,Website,4.0,1453.0,12.0,5114.56
+1006,2024-10-09,Wellness,Ashwagandha,App,2.0,1410.0,5.0,2679.0
+1007,2024-05-28,Skincare,Face Wash,App,3.0,1215.0,0.0,3645.0
+1008,2024-07-08,Skincare,Night Cream,App,2.0,1488.0,5.0,2827.2
+1009,2024-08-24,Haircare,Conditioner,Instagram,1.0,1395.0,10.0,1255.5
+1010,2024-07-24,Wellness,Vitamin D3,App,4.0,1449.0,5.0,5506.2
+1011,2024-05-15,Wellness,Ashwagandha,Instagram,4.0,1410.0,10.0,5076.0
+1012,2024-04-22,Skincare,Vitamin C Serum,WhatsApp,1.0,1813.0,7.0,1686.09
+1013,2024-11-01,Makeup,Eyeliner,Website,3.0,1426.0,8.0,3935.76
+1014,2024-12-15,Wellness,Collagen Supplement,Website,3.0,1453.0,12.0,3835.92
+1015,2024-05-14,Skincare,Moisturizer,Instagram,5.0,1358.0,8.0,6246.8
+1016,2024-03-23,Skincare,Night Cream,Instagram,3.0,1488.0,10.0,4017.6
+1017,2024-06-06,Skincare,Vitamin C Serum,App,4.0,1813.0,5.0,6889.4
+1018,2024-03-06,Haircare,Conditioner,App,5.0,1395.0,5.0,6626.25
+1019,2024-10-03,Wellness,Probiotic Blend,WhatsApp,3.0,1441.0,8.0,3977.16
+1020,2024-03-02,Wellness,Collagen Supplement,App,5.0,1453.0,10.0,6538.5
+1021,2024-01-04,Haircare,Shampoo 250ml,Amazon,1.0,2169.0,12.0,1908.72
+1022,2024-05-01,Haircare,Hair Oil,Amazon,2.0,777.0,20.0,1243.2
+1023,2024-08-30,Makeup,Lipstick,Instagram,1.0,955.0,15.0,811.75
+1024,2024-08-04,Skincare,Vitamin C Serum,App,4.0,1813.0,5.0,6889.4
+1025,2024-04-08,Haircare,Scalp Serum,Website,2.0,529.0,5.0,1005.1
+1026,2024-08-14,Skincare,Vitamin C Serum,App,5.0,1813.0,5.0,8611.75
+1027,2024-03-26,Haircare,Scalp Serum,WhatsApp,1.0,529.0,5.0,502.55
+1028,2024-05-15,Wellness,Probiotic Blend,App,5.0,1441.0,8.0,6628.6
+1029,2024-04-07,Skincare,Moisturizer,Amazon,1.0,1358.0,15.0,1154.3
+1030,2024-09-28,Skincare,Sunscreen SPF50,WhatsApp,1.0,1442.0,8.0,1326.64
+1031,2024-03-02,Haircare,Hair Oil,WhatsApp,5.0,777.0,5.0,3690.75
+1032,2024-12-02,Wellness,Omega 3,App,2.0,1161.0,5.0,2205.9
+1033,2024-05-15,Makeup,Foundation,Amazon,1.0,171.0,22.0,133.38
+1034,2024-02-21,Wellness,Vitamin D3,Instagram,3.0,1449.0,10.0,3912.3
+1035,2024-05-25,Wellness,Ashwagandha,Instagram,5.0,1410.0,10.0,6345.0
+1036,2024-12-05,Wellness,Collagen Supplement,Instagram,1.0,1453.0,15.0,1235.05
+1037,2024-05-24,Haircare,Conditioner,Website,5.0,1395.0,8.0,6417.0
+1038,2024-11-20,Skincare,Vitamin C Serum,App,3.0,1813.0,5.0,5167.05
+1039,2024-08-14,Skincare,Vitamin C Serum,Amazon,1.0,1813.0,18.0,1486.66
+1040,2024-01-19,Haircare,Scalp Serum,Website,2.0,529.0,5.0,1005.1
+1041,2024-07-02,Skincare,Moisturizer,Amazon,5.0,1358.0,15.0,5771.5
+1042,2024-03-20,Haircare,Hair Mask,WhatsApp,4.0,1047.0,10.0,3769.2
+1043,2024-12-08,Wellness,Vitamin D3,WhatsApp,1.0,1449.0,8.0,1333.08
+1044,2024-04-23,Wellness,Omega 3,WhatsApp,2.0,1161.0,8.0,2136.24
+1045,2024-06-17,Wellness,Omega 3,Instagram,5.0,1161.0,12.0,5108.4
+1046,2024-01-15,Haircare,Hair Oil,WhatsApp,3.0,777.0,5.0,2214.45
+1047,2024-06-25,Makeup,Eyeliner,App,5.0,1426.0,5.0,6773.5
+1048,2024-05-10,Skincare,Night Cream,Instagram,5.0,1488.0,10.0,6696.0
+1049,2024-08-08,Wellness,Collagen Supplement,Instagram,3.0,1453.0,15.0,3705.15
+1050,2024-07-25,Haircare,Hair Mask,App,4.0,1047.0,10.0,3769.2`;
+const rows = CSV.trim().split("\n").slice(1).map(l=>{
+  const [id,date,cat,prod,ch,q,mrp,d]=l.split(",");
+  const qty=+q, price=+mrp, disc=+d;
+  return {id:+id,date,cat,prod,ch,qty,disc,rev:qty*price*(1-disc/100)};
+});
+const PAL=["#6c5ce7","#00b894","#fd79a8","#fdcb6e","#0984e3","#e17055","#636e72"];
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const sel=document.getElementById("ch");
+["All channels",...[...new Set(rows.map(r=>r.ch))].sort()].forEach(c=>sel.add(new Option(c,c)));
+const sumBy=(arr,key)=>{const m={};arr.forEach(r=>m[r[key]]=(m[r[key]]||0)+r.rev);return m};
+const charts={};
+function draw(id,cfg){ if(charts[id]){charts[id].destroy();} charts[id]=new Chart(document.getElementById(id),cfg); }
+const tip={callbacks:{label:c=>" "+inr(c.parsed.y??c.parsed.x??c.parsed)}};
+function render(){
+  const f=sel.value, d=f==="All channels"?rows:rows.filter(r=>r.ch===f);
+  const tot=d.reduce((s,r)=>s+r.rev,0);
+  k1.textContent=inr(tot); k2.textContent=d.length; k3.textContent=d.length?inr(tot/d.length):"–";
+  k4.textContent=d.length?(d.reduce((s,r)=>s+r.disc,0)/d.length).toFixed(1)+"%":"–";
+  const chm=sumBy(d,"ch"), cl=Object.keys(chm).sort((a,b)=>chm[b]-chm[a]);
+  draw("c1",{type:"bar",data:{labels:cl,datasets:[{data:cl.map(k=>chm[k]),backgroundColor:PAL[0],borderRadius:6}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:tip},scales:{y:{ticks:{callback:v=>inr(v)}}}}});
+  const cm=sumBy(d,"cat"), ck=Object.keys(cm);
+  draw("c2",{type:"doughnut",data:{labels:ck,datasets:[{data:ck.map(k=>cm[k]),backgroundColor:PAL,borderWidth:2}]},
+    options:{maintainAspectRatio:false,cutout:"60%",plugins:{legend:{position:"bottom"},tooltip:{callbacks:{label:c=>` ${c.label}: ${inr(c.parsed)}`}}}}});
+  const pm=sumBy(d,"prod"), pl=Object.keys(pm).sort((a,b)=>pm[b]-pm[a]).slice(0,10);
+  draw("c3",{type:"bar",data:{labels:pl,datasets:[{data:pl.map(k=>pm[k]),backgroundColor:PAL[1],borderRadius:6}]},
+    options:{indexAxis:"y",maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:tip},scales:{x:{ticks:{callback:v=>inr(v)}}}}});
+  const mm={}; d.forEach(r=>{const k=r.date.slice(0,7);mm[k]=(mm[k]||0)+r.rev});
+  const ml=[]; for(let m=1;m<=12;m++){ml.push("2024-"+String(m).padStart(2,"0"))}
+  const mn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  draw("c4",{type:"line",data:{labels:mn,datasets:[{data:ml.map(k=>mm[k]||0),borderColor:PAL[2],backgroundColor:"rgba(253,121,168,.15)",fill:true,tension:.3,pointRadius:4}]},
+    options:{maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:tip},scales:{y:{beginAtZero:true,ticks:{callback:v=>inr(v)}}}}});
+}
+sel.addEventListener("change",render); render();
+</script>
+</body>
+</html>
